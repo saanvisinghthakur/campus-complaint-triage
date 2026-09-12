@@ -22,7 +22,7 @@ Students submit complaints through the portal with their name, roll number, and 
 - Live stats chart showing complaint breakdown by category
 
 ## Tech Stack
-FastAPI · SQLite · Gemini API (gemini-3.5-flash-lite) · HTML/CSS/JS · Chart.js
+Python · FastAPI · SQLite · Gemini API (gemini-3.5-flash-lite) · HTML/CSS/JS · Chart.js
 
 ## Deployment
 Hosted on Render (free tier), deployed directly from this GitHub repository.
