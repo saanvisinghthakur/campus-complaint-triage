@@ -2,52 +2,268 @@
 <html>
 <head>
   <title>Admin Dashboard - Complaint Triage</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-    th { background: #f4f4f4; }
-    .High { color: white; background: #d9534f; padding: 4px 8px; border-radius: 4px; }
-    .Medium { color: white; background: #f0ad4e; padding: 4px 8px; border-radius: 4px; }
-    .Low { color: white; background: #5cb85c; padding: 4px 8px; border-radius: 4px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #0f2044, #1a3a6e);
+      min-height: 100vh;
+      margin: 0;
+      padding: 30px;
+    }
+    h1 { color: white; margin-bottom: 4px; }
+    p.subtitle { color: #cdd8ef; margin-top: 0; margin-bottom: 20px; }
+    .panel {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e0e0e0; padding: 12px; text-align: left; vertical-align: top; font-size: 14px; }
+    th { background: #0f2044; color: white; position: sticky; top: 0; }
+    tr:hover { background: #f7f9fc; }
+
+    .badge { color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .High { background: #d9534f; }
+    .Medium { background: #f0ad4e; }
+    .Low { background: #5cb85c; }
+
+    select {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 13px;
+    }
+    .draft-btn {
+      background: #1a3a6e;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 6px;
+      display: block;
+    }
+    .draft-btn:hover { background: #14305c; }
+    .reply-box {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #333;
+      background: #f0f4fa;
+      padding: 8px;
+      border-radius: 6px;
+      width: 200px;
+      min-height: 60px;
+      display: none;
+      font-family: inherit;
+    }
+    .repeat-tag {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #a94442;
+      background: #f9e2e2;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-  <h1>Admin Dashboard</h1>
-  <p>All submitted complaints, sorted by most recent.</p>
-  <table id="complaintsTable">
-    <thead>
-      <tr>
-        <th>Category</th>
-        <th>Urgency</th>
-        <th>Summary</th>
-        <th>Original Complaint</th>
-        <th>Status</th>
-        <th>Submitted</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p class="subtitle">All submitted complaints, sorted by most recent.</p>
+    </div>
+    <button id="statsBtn" onclick="toggleStats()" style="width: auto; margin-top: 0;">📊 View Stats</button>
+  </div>
+
+  <div class="panel" id="statsPanel" style="margin-bottom: 20px; max-width: 500px; display: none;">
+    <h2 style="margin-top:0; font-size:18px; color:#0f2044;">📊 Complaints by Category</h2>
+    <canvas id="categoryChart" height="200"></canvas>
+  </div>
+
+  <div class="panel">
+    <table id="complaintsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Student</th>
+          <th>Category</th>
+          <th>Urgency</th>
+          <th>Summary</th>
+          <th>Original Complaint</th>
+          <th>Status</th>
+          <th>Reply</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
 
   <script>
+    let allComplaints = [];
+
+          let categoryChart = null;
+    let statsLoaded = false;
+
     async function loadComplaints() {
       const response = await fetch("/complaints");
-      const complaints = await response.json();
+      allComplaints = await response.json();
+      renderTable();
+    }
+
+    function toggleStats() {
+      const panel = document.getElementById("statsPanel");
+      const isHidden = panel.style.display === "none" || panel.style.display === "";
+      panel.style.display = isHidden ? "block" : "none";
+
+      if (isHidden) {
+        renderChart();
+      }
+    }
+
+    function renderChart() {
+      const counts = {};
+      allComplaints.forEach(c => {
+        counts[c.category] = (counts[c.category] || 0) + 1;
+      });
+
+      const labels = Object.keys(counts);
+      const values = Object.values(counts);
+
+      const ctx = document.getElementById("categoryChart").getContext("2d");
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 250);
+      gradient.addColorStop(0, "#2a4d8f");
+      gradient.addColorStop(1, "#0a1830");
+
+      if (categoryChart) {
+        categoryChart.destroy();
+      }
+
+      categoryChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Number of Complaints",
+            data: values,
+            backgroundColor: gradient
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          }
+        }
+      });
+    }
+
+    function renderTable() {
       const tbody = document.getElementById("tableBody");
       tbody.innerHTML = "";
 
-      complaints.forEach(c => {
+      const categoryCounts = {};
+      allComplaints.forEach(c => {
+        const key = c.category + "::" + c.summary.toLowerCase().slice(0, 20);
+        categoryCounts[key] = (categoryCounts[key] || 0) + 1;
+      });
+
+      allComplaints.forEach(c => {
+        const key = c.category + "::" + c.summary.toLowerCase().slice(0, 20);
+        const repeatCount = categoryCounts[key];
+
         const row = document.createElement("tr");
         row.innerHTML = `
+          <td><strong>${c.complaint_code}</strong></td>
+          <td>${c.student_name}<br><small>${c.roll_number}</small><br><small>${c.email}</small></td>
           <td>${c.category}</td>
-          <td><span class="${c.urgency}">${c.urgency}</span></td>
-          <td>${c.summary}</td>
+          <td><span class="badge ${c.urgency}">${c.urgency}</span></td>
+          <td>${c.summary}${repeatCount > 1 ? `<br><span class="repeat-tag">⚠ Reported ${repeatCount}x</span>` : ""}</td>
           <td>${c.text}</td>
-          <td>${c.status}</td>
+          <td>
+            <select onchange="updateStatus(${c.id}, this.value)">
+              <option ${c.status === "Pending" ? "selected" : ""}>Pending</option>
+              <option ${c.status === "In Progress" ? "selected" : ""}>In Progress</option>
+              <option ${c.status === "Resolved" ? "selected" : ""}>Resolved</option>
+            </select>
+          </td>
+                    <td>
+            <button class="draft-btn" onclick="draftReply(${c.id}, this)">✍️ Draft Reply</button>
+            <textarea class="reply-box" id="reply-${c.id}" style="display:${c.reply ? "block" : "none"};" ${c.reply ? "disabled" : ""}>${c.reply || ""}</textarea>
+            <button class="draft-btn" id="submitReply-${c.id}" style="display:${c.reply ? "none" : "none"}; background:#2f7a3f;" onclick="submitReply(${c.id})">✅ Submit Reply</button>
+            <button class="draft-btn" id="sentBtn-${c.id}" style="display:${c.reply ? "block" : "none"}; background:#2f7a3f; cursor:default;">✅ Sent</button>
+            <button class="draft-btn" id="resendBtn-${c.id}" style="display:${c.reply ? "block" : "none"}; background:#888;" onclick="enableResend(${c.id})">🔁 Resend</button>
+          </td>
+
           <td>${new Date(c.created_at).toLocaleString()}</td>
         `;
         tbody.appendChild(row);
       });
+    }
+
+    async function updateStatus(id, status) {
+      await fetch(`/complaints/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: status })
+      });
+    }
+
+        async function draftReply(id, btn) {
+      btn.textContent = "Drafting...";
+      btn.disabled = true;
+
+      const response = await fetch(`/draft-reply/${id}`, { method: "POST" });
+      const data = await response.json();
+
+      const replyBox = document.getElementById(`reply-${id}`);
+      replyBox.value = data.draft || data.error || "";
+      replyBox.style.display = "block";
+      replyBox.disabled = false;
+      document.getElementById(`submitReply-${id}`).style.display = "block";
+      document.getElementById(`sentBtn-${id}`).style.display = "none";
+      document.getElementById(`resendBtn-${id}`).style.display = "none";
+
+      btn.textContent = "✍️ Draft Reply";
+      btn.disabled = false;
+    }
+
+        async function submitReply(id) {
+      const replyBox = document.getElementById(`reply-${id}`);
+      const submitBtn = document.getElementById(`submitReply-${id}`);
+      submitBtn.textContent = "Sending...";
+      submitBtn.disabled = true;
+
+      await fetch(`/complaints/${id}/reply`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: replyBox.value })
+      });
+
+      replyBox.value = "";
+      replyBox.style.display = "none";
+      submitBtn.style.display = "none";
+      submitBtn.textContent = "✅ Submit Reply";
+      submitBtn.disabled = false;
+      document.getElementById(`sentBtn-${id}`).style.display = "block";
+      document.getElementById(`resendBtn-${id}`).style.display = "block";
+    }
+
+        function enableResend(id) {
+      const replyBox = document.getElementById(`reply-${id}`);
+      replyBox.style.display = "block";
+      replyBox.disabled = false;
+      document.getElementById(`submitReply-${id}`).style.display = "block";
+      document.getElementById(`sentBtn-${id}`).style.display = "none";
+      document.getElementById(`resendBtn-${id}`).style.display = "none";
     }
 
     loadComplaints();
