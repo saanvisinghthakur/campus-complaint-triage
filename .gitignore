@@ -1,3 +1,4 @@
 venv/
 .env
 __pycache__/  #This tells git "ignore these files/folders, don't track or upload them. so that our api key is not visible to the public
+complaints.db

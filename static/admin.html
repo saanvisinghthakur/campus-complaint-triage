@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard - Complaint Triage</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f4f4f4; }
+    .High { color: white; background: #d9534f; padding: 4px 8px; border-radius: 4px; }
+    .Medium { color: white; background: #f0ad4e; padding: 4px 8px; border-radius: 4px; }
+    .Low { color: white; background: #5cb85c; padding: 4px 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Admin Dashboard</h1>
+  <p>All submitted complaints, sorted by most recent.</p>
+  <table id="complaintsTable">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Urgency</th>
+        <th>Summary</th>
+        <th>Original Complaint</th>
+        <th>Status</th>
+        <th>Submitted</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <script>
+    async function loadComplaints() {
+      const response = await fetch("/complaints");
+      const complaints = await response.json();
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      complaints.forEach(c => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${c.category}</td>
+          <td><span class="${c.urgency}">${c.urgency}</span></td>
+          <td>${c.summary}</td>
+          <td>${c.text}</td>
+          <td>${c.status}</td>
+          <td>${new Date(c.created_at).toLocaleString()}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    loadComplaints();
+  </script>
+</body>
+</html>
