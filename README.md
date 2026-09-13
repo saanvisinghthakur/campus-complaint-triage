@@ -28,11 +28,12 @@ Python · FastAPI · SQLite · Gemini API (gemini-3.5-flash-lite) · HTML/CSS/JS
 Hosted on Render (free tier), deployed directly from this GitHub repository.
 
 ## Future Scope
+- Unified single-entry portal with role-based access — a dropdown lets users select their role (Student, Faculty, Staff, Admin) before entering credentials, routing them to the appropriate view instead of relying on separate links
 - Photo/image upload for complaints
 - Email notifications on status updates or replies
 - Full student login to view complaint history
 - Public complaint feed — students can browse already-submitted complaints (anonymized) before submitting, to avoid duplicates and see what's already being addressed
-- Multi-language complaint support
 - Semantic (AI-based) duplicate detection
+- Multi-language complaint support
 - Admin analytics dashboard (trends, resolution time, hotspots)
 - Anonymous complaint option for sensitive cases
